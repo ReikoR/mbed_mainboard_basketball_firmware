@@ -14,9 +14,6 @@ RGBLed led2(LED2R, LED2G, LED2B);
 
 DigitalIn infrared(ADC0);
 
-DigitalOut charge(C_CHARGE);
-DigitalOut kick(C_KICK);
-DigitalIn chargerDone(C_DONE);
 Timeout kicker;
 
 static const int NUMBER_OF_MOTORS = 4;
@@ -51,39 +48,6 @@ bool serialData = false;
 bool failSafeEnabled = true;
 int ticksSinceCommand = 0;
 
-bool discharging = false;
-Ticker dischargeTicker;
-Timeout stopDischarging;
-
-void stopDischargeKick() {
-  kick = 0;
-}
-
-void dischargeKick() {
-  kick = 1;
-  kicker.attach_us(&stopDischargeKick, 100);
-}
-
-void endDischarge() {
-  dischargeTicker.detach();
-  discharging = false;
-}
-
-void discharge() {
-  charge = 0;
-  discharging = true;
-  dischargeTicker.attach(&dischargeKick, 0.01);
-  stopDischarging.attach(&endDischarge, 15);
-}
-
-void endDischarging() {
-  if (discharging) {
-    dischargeTicker.detach();
-    stopDischarging.detach();
-    discharging = false;
-  }
-}
-
 void pidTick() {
   for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
     motors[i]->pidTick();
@@ -105,18 +69,11 @@ void pidTick() {
 
     pwm1.pulsewidth_us(100);
   }
-
-  if (ticksSinceCommand == 180) {
-    discharge();
-  }
 }
 
 int main() {
   pidTicker.attach(pidTick, 1/PID_FREQ);
   //serial.attach(&serialInterrupt);
-
-  kick = 0;
-  charge = 0;
 
   // Ball detector status
   int infraredStatus = -1;
@@ -147,15 +104,7 @@ int main() {
       serial.printf("i%d\n", newInfraredStatus);
       led2.setGreen(infraredStatus);
     }
-
-    /// COILGUN
-    //serial.printf("%d\n", chargerDone.read());
   }
-}
-
-void stopKick() {
-  kick = 0;
-  charge = 1;
 }
 
 void parseCommand(char *command) {
@@ -202,22 +151,6 @@ void parseCommand(char *command) {
 
   else if (command[0] == 'i') {
     serial.printf("i%d\n", infrared.read());
-  }
-
-  else if (command[0] == 'c') {
-    endDischarging();
-    charge = (command[1] == '1') ? 1 : 0;
-  }
-
-  else if (command[0] == 'k') {
-    endDischarging();
-    charge = 0;
-    kick = 1;
-    kicker.attach_us(&stopKick, atoi(command+1));
-  }
-
-  else if (command[0] == 'e') {
-    discharge();
   }
 
   else if (command[0] == 'f') {
