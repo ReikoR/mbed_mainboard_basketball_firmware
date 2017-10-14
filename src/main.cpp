@@ -3,11 +3,11 @@
 #include "motor.h"
 #include "RGBLed.hpp"
 #include "USBSerial.h"
+#include "RFManager.h"
 
 USBSerial serial;
 
 Serial pc(USBTX, USBRX);
-Serial com(COMTX, COMRX);
 
 RGBLed led1(LED1R, LED1G, LED1B);
 RGBLed led2(LED2R, LED2G, LED2B);
@@ -33,6 +33,8 @@ PwmOut m2(M2_PWM);
 PwmOut m3(M3_PWM);
 PwmOut pwm0(PWM0);
 PwmOut pwm1(PWM1);
+
+RFManager rfModule(COMTX, COMRX);
 
 void serialInterrupt();
 void parseCommand(char *command);
@@ -83,6 +85,12 @@ int main() {
   pwm1.pulsewidth_us(100);
 
   while (1) {
+    if (rfModule.readable()) {
+        serial.printf("<ref:%s>", rfModule.read());
+    }
+
+    rfModule.update();
+
     if (serial.readable()) {
       buf[serialCount] = serial.getc();
       //serial.putc(buf[serialCount]);
@@ -136,6 +144,10 @@ void parseCommand(char *command) {
   else if (command[0] == 's' && command[1] == 'g') {
     serial.printf("%d:%d:%d:%d\n", motors[0]->getSpeed(), motors[1]->getSpeed(), motors[2]->getSpeed(), motors[3]->getSpeed());
   }
+
+  else if (command[0] == 'r' && command[1] == 'f') {
+       rfModule.send(command + 3);
+   }
 
   else if (command[0] == 'r') {
     led1.setRed(!led1.getRed());
