@@ -86,7 +86,7 @@ int main() {
 
   while (1) {
     if (rfModule.readable()) {
-        serial.printf("<ref:%s>", rfModule.read());
+        serial.printf("<ref:%s>\n", rfModule.read());
     }
 
     rfModule.update();
@@ -109,63 +109,74 @@ int main() {
 
     if (newInfraredStatus != infraredStatus) {
       infraredStatus = newInfraredStatus;
-      serial.printf("i%d\n", newInfraredStatus);
+      serial.printf("<ball:%d>\n", newInfraredStatus);
       led2.setGreen(infraredStatus);
     }
   }
 }
 
-void parseCommand(char *command) {
+void parseCommand(char *buffer) {
   ticksSinceCommand = 0;
 
-  // command == "sd14:16:10:30"
-  if (command[0] == 's' && command[1] == 'd') {
-    char * sd;
+  char *cmd = strtok(buffer, ":");
 
+  // buffer == "sd:14:16:10:30"
+  if (strncmp(cmd, "sd", 2) == 0) {
     for (int i = 0; i < NUMBER_OF_MOTORS; ++i) {
-      sd = strtok(i ? NULL : command + 2, ":");
-      motors[i]->setSpeed((int16_t) atoi(sd));
+      motors[i]->setSpeed((int16_t) atoi(strtok(NULL, ":")));
     }
+
+    serial.printf("<gs:%d:%d:%d:%d>\n",
+      motors[0]->getSpeed(),
+      motors[1]->getSpeed(),
+      motors[2]->getSpeed(),
+      motors[3]->getSpeed()
+    );
   }
 
-  else if (command[0] == 'd') {
+  if (strncmp(cmd, "d", 1) == 0) {
     /*
     if (command[1] == '0') {
       pwm1.pulsewidth_us(100);
     } else if (command[1] == '1') {
       pwm1.pulsewidth_us(268);
     } else*/ {
-      pwm1.pulsewidth_us(atoi(command + 1));
+      pwm1.pulsewidth_us(atoi(buffer + 2));
     }
     //pwm1.pulsewidth_us((int) atoi(command+1));
     //serial.printf("sending %d\n", (int) atoi(command+1));
   }
 
-  else if (command[0] == 's' && command[1] == 'g') {
-    serial.printf("%d:%d:%d:%d\n", motors[0]->getSpeed(), motors[1]->getSpeed(), motors[2]->getSpeed(), motors[3]->getSpeed());
+  if (strncmp(cmd, "gs", 2) == 0) {
+    serial.printf("<gs:%d:%d:%d:%d>\n",
+      motors[0]->getSpeed(),
+      motors[1]->getSpeed(),
+      motors[2]->getSpeed(),
+      motors[3]->getSpeed()
+    );
   }
 
-  else if (command[0] == 'r' && command[1] == 'f') {
-       rfModule.send(command + 3);
-   }
+  if (strncmp(cmd, "rf", 2) == 0) {
+       rfModule.send(buffer + 3);
+  }
 
-  else if (command[0] == 'r') {
+  if (strncmp(cmd, "r", 1) == 0) {
     led1.setRed(!led1.getRed());
   }
 
-  else if (command[0] == 'g') {
+  if (strncmp(cmd, "g", 1) == 0) {
     led1.setGreen(!led1.getGreen());
   }
 
-  else if (command[0] == 'b') {
+  if (strncmp(cmd, "b", 1) == 0) {
     led1.setBlue(!led1.getBlue());
   }
 
-  else if (command[0] == 'i') {
-    serial.printf("i%d\n", infrared.read());
+  if (strncmp(cmd, "gb", 2) == 0) {
+    serial.printf("<ball:%d>\n", infrared.read());
   }
 
-  else if (command[0] == 'f') {
-    failSafeEnabled = command[1] == '1';
+  if (strncmp(cmd, "fs", 1) == 0) {
+    failSafeEnabled = buffer[3] != '0';
   }
 }
