@@ -19,13 +19,15 @@ DigitalOut kick(C_KICK);
 DigitalIn chargerDone(C_DONE);
 Timeout kicker;
 
-#define NUMBER_OF_MOTORS 4
+static const int NUMBER_OF_MOTORS = 4;
 
-Motor motors[NUMBER_OF_MOTORS] = {
-  Motor(&pc, M0_PWM, M0_DIR1, M0_DIR2, M0_FAULT, M0_ENCA, M0_ENCB),
-  Motor(&pc, M1_PWM, M1_DIR1, M1_DIR2, M1_FAULT, M1_ENCA, M1_ENCB),
-  Motor(&pc, M2_PWM, M2_DIR1, M2_DIR2, M2_FAULT, M2_ENCA, M2_ENCB),
-  Motor(&pc, M3_PWM, M3_DIR1, M3_DIR2, M3_FAULT, M3_ENCA, M3_ENCB)
+Motor motor0(&pc, M0_PWM, M0_DIR1, M0_DIR2, M0_FAULT, M0_ENCA, M0_ENCB);
+Motor motor1(&pc, M1_PWM, M1_DIR1, M1_DIR2, M1_FAULT, M1_ENCA, M1_ENCB);
+Motor motor2(&pc, M2_PWM, M2_DIR1, M2_DIR2, M2_FAULT, M2_ENCA, M2_ENCB);
+Motor motor3(&pc, M3_PWM, M3_DIR1, M3_DIR2, M3_FAULT, M3_ENCA, M3_ENCB);
+
+Motor * motors[NUMBER_OF_MOTORS] = {
+  &motor0, &motor1, &motor2, &motor3
 };
 
 PwmOut m0(M0_PWM);
@@ -84,7 +86,7 @@ void endDischarging() {
 
 void pidTick() {
   for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
-    motors[i].pidTick();
+    motors[i]->pidTick();
   }
 
   if (pidTickerCount++ % 25 == 0) {
@@ -98,7 +100,7 @@ void pidTick() {
 
   if (ticksSinceCommand == 60) {
     for (int i = 0; i < NUMBER_OF_MOTORS; ++i) {
-      motors[i].setSpeed(0);
+      motors[i]->setSpeed(0);
     }
 
     pwm1.pulsewidth_us(100);
@@ -165,7 +167,7 @@ void parseCommand(char *command) {
 
     for (int i = 0; i < NUMBER_OF_MOTORS; ++i) {
       sd = strtok(i ? NULL : command + 2, ":");
-      motors[i].setSpeed((int16_t) atoi(sd));
+      motors[i]->setSpeed((int16_t) atoi(sd));
     }
   }
 
@@ -183,7 +185,7 @@ void parseCommand(char *command) {
   }
 
   else if (command[0] == 's' && command[1] == 'g') {
-    serial.printf("%d:%d:%d:%d\n", motors[0].getSpeed(), motors[1].getSpeed(), motors[2].getSpeed(), motors[3].getSpeed());
+    serial.printf("%d:%d:%d:%d\n", motors[0]->getSpeed(), motors[1]->getSpeed(), motors[2]->getSpeed(), motors[3]->getSpeed());
   }
 
   else if (command[0] == 'r') {
